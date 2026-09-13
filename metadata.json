@@ -1,0 +1,6 @@
+{
+  "name": "Urban Grove Cafe",
+  "description": "Urban Grove Cafe — Premium modern café website, artisan coffee ordering, table reservations, and editorial community hub.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
