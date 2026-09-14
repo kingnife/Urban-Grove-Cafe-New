@@ -276,7 +276,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           <input
                             type="text"
                             required
-                            value={fullName}
+                            value={fullName || ''}
                             onChange={(e) => setFullName(e.target.value)}
                             placeholder="Sarah Johnson"
                             className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-sm focus:outline-none focus:border-[#C48B47]"
@@ -291,7 +291,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             <input
                               type="email"
                               required
-                              value={email}
+                              value={email || ''}
                               onChange={(e) => setEmail(e.target.value)}
                               placeholder="sarah.j@example.com"
                               className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-sm focus:outline-none focus:border-[#C48B47]"
@@ -305,7 +305,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             <input
                               type="tel"
                               required
-                              value={phone}
+                              value={phone || ''}
                               onChange={(e) => setPhone(e.target.value)}
                               placeholder="+1 (555) 234-8901"
                               className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-sm focus:outline-none focus:border-[#C48B47]"
@@ -321,7 +321,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             <input
                               type="text"
                               required
-                              value={deliveryAddress}
+                              value={deliveryAddress || ''}
                               onChange={(e) => setDeliveryAddress(e.target.value)}
                               placeholder="Street Address, Apt / Suite / Floor, City"
                               className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-sm focus:outline-none focus:border-[#C48B47]"
@@ -335,7 +335,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           </label>
                           <input
                             type="text"
-                            value={orderNotes}
+                            value={orderNotes || ''}
                             onChange={(e) => setOrderNotes(e.target.value)}
                             placeholder="e.g. Leave at front reception, extra napkins..."
                             className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-sm focus:outline-none focus:border-[#C48B47]"
@@ -370,6 +370,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                               <input
                                 type="radio"
                                 name="payment"
+                                value="card"
                                 checked={paymentMethod === 'card'}
                                 onChange={() => setPaymentMethod('card')}
                                 className="text-[#C48B47] focus:ring-[#C48B47]"
@@ -393,6 +394,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                               <input
                                 type="radio"
                                 name="payment"
+                                value="cod"
                                 checked={paymentMethod === 'cod'}
                                 onChange={() => setPaymentMethod('cod')}
                                 className="text-[#C48B47] focus:ring-[#C48B47]"
@@ -416,6 +418,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                               <input
                                 type="radio"
                                 name="payment"
+                                value="bank_transfer"
                                 checked={paymentMethod === 'bank_transfer'}
                                 onChange={() => setPaymentMethod('bank_transfer')}
                                 className="text-[#C48B47] focus:ring-[#C48B47]"
@@ -437,7 +440,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             <label className="block text-[11px] font-semibold text-[#2A1E17] mb-1">Card Number</label>
                             <input
                               type="text"
-                              value={cardNumber}
+                              value={cardNumber || ''}
                               onChange={(e) => setCardNumber(e.target.value)}
                               className="w-full px-3 py-2 rounded-xl bg-white border border-[#2A1E17]/15 text-xs text-[#2A1E17]"
                             />
@@ -448,7 +451,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                               <label className="block text-[11px] font-semibold text-[#2A1E17] mb-1">Expires</label>
                               <input
                                 type="text"
-                                value={cardExpiry}
+                                value={cardExpiry || ''}
                                 onChange={(e) => setCardExpiry(e.target.value)}
                                 className="w-full px-3 py-2 rounded-xl bg-white border border-[#2A1E17]/15 text-xs text-[#2A1E17]"
                               />
@@ -457,7 +460,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                               <label className="block text-[11px] font-semibold text-[#2A1E17] mb-1">CVC Code</label>
                               <input
                                 type="text"
-                                value={cardCvc}
+                                value={cardCvc || ''}
                                 onChange={(e) => setCardCvc(e.target.value)}
                                 className="w-full px-3 py-2 rounded-xl bg-white border border-[#2A1E17]/15 text-xs text-[#2A1E17]"
                               />

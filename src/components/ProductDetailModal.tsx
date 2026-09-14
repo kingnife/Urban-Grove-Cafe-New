@@ -284,7 +284,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </label>
             <input
               type="text"
-              value={specialInstructions}
+              value={specialInstructions || ''}
               onChange={(e) => setSpecialInstructions(e.target.value)}
               placeholder="e.g. Extra hot, light ice, dressing on the side..."
               className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"

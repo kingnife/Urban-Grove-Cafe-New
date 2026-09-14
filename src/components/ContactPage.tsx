@@ -169,7 +169,7 @@ export const ContactPage: React.FC = () => {
                   <input
                     type="text"
                     required
-                    value={name}
+                    value={name || ''}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Sarah Johnson"
                     className="w-full px-4 py-3 rounded-xl border border-[#2A1E17]/15 text-xs sm:text-sm text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
@@ -183,7 +183,7 @@ export const ContactPage: React.FC = () => {
                   <input
                     type="email"
                     required
-                    value={email}
+                    value={email || ''}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="sarah.j@example.com"
                     className="w-full px-4 py-3 rounded-xl border border-[#2A1E17]/15 text-xs sm:text-sm text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
@@ -196,7 +196,7 @@ export const ContactPage: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={subject}
+                    value={subject || ''}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="e.g. Private event inquiry, wholesale beans..."
                     className="w-full px-4 py-3 rounded-xl border border-[#2A1E17]/15 text-xs sm:text-sm text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
@@ -210,7 +210,7 @@ export const ContactPage: React.FC = () => {
                   <textarea
                     required
                     rows={4}
-                    value={message}
+                    value={message || ''}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Write your note or question here..."
                     className="w-full px-4 py-3 rounded-xl border border-[#2A1E17]/15 text-xs sm:text-sm text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"

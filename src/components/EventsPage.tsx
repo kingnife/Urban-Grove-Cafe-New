@@ -180,7 +180,7 @@ export const EventsPage: React.FC<EventsPageProps> = ({ events, onRSVP }) => {
                   <input
                     type="text"
                     required
-                    value={name}
+                    value={name || ''}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Sarah Johnson"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
@@ -192,7 +192,7 @@ export const EventsPage: React.FC<EventsPageProps> = ({ events, onRSVP }) => {
                   <input
                     type="email"
                     required
-                    value={email}
+                    value={email || ''}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="sarah@example.com"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
@@ -202,7 +202,7 @@ export const EventsPage: React.FC<EventsPageProps> = ({ events, onRSVP }) => {
                 <div>
                   <label className="block text-xs font-semibold text-[#2A1E17] mb-1">Number of Guests</label>
                   <select
-                    value={guests}
+                    value={guests || 1}
                     onChange={(e) => setGuests(Number(e.target.value))}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] bg-white focus:outline-none focus:border-[#C48B47]"
                   >

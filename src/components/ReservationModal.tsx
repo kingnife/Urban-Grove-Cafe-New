@@ -160,7 +160,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                     <input
                       type="date"
                       required
-                      value={date}
+                      value={date || ''}
                       onChange={(e) => setDate(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
                     />
@@ -171,7 +171,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                       Guests *
                     </label>
                     <select
-                      value={guests}
+                      value={guests || 2}
                       onChange={(e) => setGuests(Number(e.target.value))}
                       className="w-full px-3 py-2 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
                     >
@@ -213,7 +213,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                     Preferred Seating Area
                   </label>
                   <select
-                    value={seatingArea}
+                    value={seatingArea || 'Garden Terrace Patio'}
                     onChange={(e: any) => setSeatingArea(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
                   >
@@ -232,7 +232,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                   <input
                     type="text"
                     required
-                    value={name}
+                    value={name || ''}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Sarah Johnson"
                     className="w-full px-3 py-2 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
@@ -247,7 +247,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                     <input
                       type="email"
                       required
-                      value={email}
+                      value={email || ''}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="sarah@example.com"
                       className="w-full px-3 py-2 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
@@ -261,7 +261,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                     <input
                       type="tel"
                       required
-                      value={phone}
+                      value={phone || ''}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+1 (555) 234-8901"
                       className="w-full px-3 py-2 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
@@ -275,7 +275,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={specialRequests}
+                    value={specialRequests || ''}
                     onChange={(e) => setSpecialRequests(e.target.value)}
                     placeholder="e.g. Highchair needed, birthday celebration..."
                     className="w-full px-3 py-2 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"

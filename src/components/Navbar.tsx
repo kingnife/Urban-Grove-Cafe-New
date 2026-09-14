@@ -10,7 +10,8 @@ import {
   ShieldCheck, 
   Clock, 
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Lock
 } from 'lucide-react';
 import { CustomerUser } from '../types';
 
@@ -206,19 +207,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="hidden xl:inline max-w-[90px] truncate">{userName.split(' ')[0]}</span>
               </button>
 
-              {/* Admin Portal Toggle Badge */}
+              {/* Staff & Admin Portal (Passcode Protected) */}
               <button
                 onClick={handleAdminToggle}
                 id="nav-admin-toggle-btn"
-                className={`p-2 rounded-xl text-xs font-medium transition-all flex items-center gap-1 border ${
+                className={`p-2 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 border ${
                   isCurrentAdmin 
-                    ? 'bg-[#1E3A2F] text-[#86efac] border-[#2c5344]' 
-                    : 'bg-[#F6F2EC] text-[#2A1E17]/60 hover:text-[#2A1E17] border-transparent'
+                    ? 'bg-[#1E3A2F] text-[#86efac] border-[#2c5344] shadow-xs' 
+                    : 'bg-[#F6F2EC] text-[#2A1E17]/60 hover:text-[#2A1E17] hover:bg-[#ede7de] border-transparent'
                 }`}
-                title={isCurrentAdmin ? 'Viewing Admin Mode (Click to exit)' : 'Admin Dashboard Portal'}
+                title={isCurrentAdmin ? 'Admin Mode Active (Click to switch view)' : 'Staff Management Portal (Passcode Required)'}
               >
-                <ShieldCheck className="w-4 h-4" />
-                <span className="hidden xl:inline text-[11px]">{isCurrentAdmin ? 'Admin' : 'Staff'}</span>
+                {isCurrentAdmin ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-[#86efac] animate-pulse" />
+                    <span className="hidden xl:inline text-[11px] font-semibold text-[#86efac]">Admin Active</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5 text-[#C48B47]" />
+                    <span className="hidden xl:inline text-[11px] font-medium">Staff</span>
+                  </>
+                )}
               </button>
             </div>
 

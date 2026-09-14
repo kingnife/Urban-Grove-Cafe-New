@@ -24,6 +24,7 @@ export interface MenuItem {
   isPopular?: boolean;
   isSpecial?: boolean;
   isAvailable: boolean;
+  inStock?: boolean;
   prepTimeMinutes: number;
 }
 
@@ -138,6 +139,26 @@ export interface AdminStats {
   weeklySales: { day: string; revenue: number; orders: number }[];
 }
 
+export interface LoyaltyTransaction {
+  id: string;
+  date: string;
+  description: string;
+  points: number; // positive for earned, negative for redeemed
+  type: 'order' | 'bonus' | 'event' | 'review' | 'redemption';
+  orderNumber?: string;
+  balanceAfter?: number;
+}
+
+export interface LoyaltyTier {
+  id: string;
+  name: string;
+  minPoints: number;
+  maxPoints: number;
+  perks: string[];
+  badgeColor: string;
+  multiplierText: string;
+}
+
 export interface CustomerUser {
   id: string;
   name: string;
@@ -146,6 +167,8 @@ export interface CustomerUser {
   avatar: string;
   memberSince: string;
   loyaltyPoints: number;
+  lifetimePoints?: number;
   savedAddresses: { id?: string; label: string; address: string; isDefault: boolean }[];
   favoriteItemIds: string[];
+  pointsHistory?: LoyaltyTransaction[];
 }

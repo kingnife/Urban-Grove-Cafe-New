@@ -9,7 +9,7 @@ import {
   INITIAL_EVENTS,
   INITIAL_USER 
 } from './src/data/initialData.ts';
-import { MenuItem, Order, Reservation, Review, CafeEvent, ContactMessage } from './src/types.ts';
+import { MenuItem, Order, Reservation, Review, CafeEvent, ContactMessage, CustomerUser } from './src/types.ts';
 
 async function startServer() {
   const app = express();
@@ -21,6 +21,7 @@ async function startServer() {
   let reservations: Reservation[] = [...INITIAL_RESERVATIONS];
   let reviews: Review[] = [...INITIAL_REVIEWS];
   let events: CafeEvent[] = [...INITIAL_EVENTS];
+  let currentUser: CustomerUser = { ...INITIAL_USER };
   let messages: ContactMessage[] = [
     {
       id: 'msg-1',
@@ -188,6 +189,23 @@ async function startServer() {
     };
 
     orders.unshift(newOrder);
+
+    // Award loyalty points for customer orders (10 pts per $1)
+    const pointsEarned = Math.round(newOrder.total * 10);
+    currentUser.loyaltyPoints += pointsEarned;
+    currentUser.lifetimePoints = (currentUser.lifetimePoints || 0) + pointsEarned;
+    const firstItemName = newOrder.items[0]?.menuItem?.name || 'Café Order';
+    const historyEntry = {
+      id: `tx-${Date.now()}`,
+      date: 'Just now',
+      description: `Order #${newOrder.orderNumber} – ${firstItemName}${newOrder.items.length > 1 ? ` & ${newOrder.items.length - 1} more` : ''}`,
+      points: pointsEarned,
+      type: 'order' as const,
+      orderNumber: newOrder.orderNumber,
+      balanceAfter: currentUser.loyaltyPoints
+    };
+    currentUser.pointsHistory = [historyEntry, ...(currentUser.pointsHistory || [])];
+
     res.status(201).json({ success: true, data: newOrder });
   });
 
@@ -199,6 +217,39 @@ async function startServer() {
     }
     order.status = status;
     res.json({ success: true, data: order });
+  });
+
+  // Simulated Email Service for Order Confirmation / Receipt
+  app.post('/api/orders/:id/email-receipt', (req, res) => {
+    const { email } = req.body;
+    const order = orders.find(o => o.id === req.params.id || o.orderNumber === req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    const recipientEmail = email || order.customerEmail || 'customer@example.com';
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    console.log(`[SIMULATED EMAIL SERVICE] ========================================`);
+    console.log(`[SIMULATED EMAIL SERVICE] TO: ${recipientEmail}`);
+    console.log(`[SIMULATED EMAIL SERVICE] SUBJECT: Your Urban Grove Cafe Order Receipt #${order.orderNumber}`);
+    console.log(`[SIMULATED EMAIL SERVICE] SENT AT: ${timestamp}`);
+    console.log(`[SIMULATED EMAIL SERVICE] ORDER TOTAL: $${order.total.toFixed(2)}`);
+    console.log(`[SIMULATED EMAIL SERVICE] ========================================`);
+
+    res.json({
+      success: true,
+      message: `Receipt for Order #${order.orderNumber} sent to ${recipientEmail}`,
+      data: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        recipientEmail,
+        sentAt: timestamp,
+        customerName: order.customerName,
+        total: order.total,
+        subject: `Your Urban Grove Cafe Order Receipt #${order.orderNumber}`
+      }
+    });
   });
 
   // --- RESERVATIONS API ---
@@ -247,6 +298,54 @@ async function startServer() {
     res.json({ success: true, count: events.length, data: events });
   });
 
+  app.post('/api/events', (req, res) => {
+    const { title, category, date, time, description, image, location, ticketPrice, spotsLeft } = req.body;
+    const newEvent: CafeEvent = {
+      id: `evt-${Date.now()}`,
+      title: title || 'New Café Event',
+      category: category || 'Special Event',
+      date: date || 'Upcoming Date',
+      time: time || '7:00 PM – 9:00 PM',
+      description: description || 'Join us at Urban Grove for a special gathering.',
+      image: image || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
+      location: location || 'Urban Grove Hearth Lounge',
+      ticketPrice: Number(ticketPrice) || 0,
+      spotsLeft: spotsLeft !== undefined ? Math.max(0, Number(spotsLeft)) : 20,
+      rsvps: [],
+      rsvpList: []
+    };
+    events.unshift(newEvent);
+    res.status(201).json({ success: true, data: newEvent });
+  });
+
+  app.put('/api/events/:id', (req, res) => {
+    const index = events.findIndex(e => e.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ success: false, error: 'Event not found' });
+    }
+    const current = events[index];
+    const updated: CafeEvent = {
+      ...current,
+      ...req.body,
+      id: current.id,
+      ticketPrice: req.body.ticketPrice !== undefined ? Number(req.body.ticketPrice) : current.ticketPrice,
+      spotsLeft: req.body.spotsLeft !== undefined ? Math.max(0, Number(req.body.spotsLeft)) : current.spotsLeft,
+      rsvps: current.rsvps || [],
+      rsvpList: current.rsvpList || current.rsvps || []
+    };
+    events[index] = updated;
+    res.json({ success: true, data: updated });
+  });
+
+  app.delete('/api/events/:id', (req, res) => {
+    const index = events.findIndex(e => e.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ success: false, error: 'Event not found' });
+    }
+    const removed = events.splice(index, 1)[0];
+    res.json({ success: true, message: `Event "${removed.title}" removed successfully` });
+  });
+
   app.post('/api/events/:id/rsvp', (req, res) => {
     const { name, email, guests } = req.body;
     const event = events.find(e => e.id === req.params.id);
@@ -258,8 +357,33 @@ async function startServer() {
       return res.status(400).json({ success: false, error: 'Not enough spots available' });
     }
     event.spotsLeft -= guestCount;
-    event.rsvps.push({ name, email, guests: guestCount });
+    if (!event.rsvps) event.rsvps = [];
+    if (!event.rsvpList) event.rsvpList = [];
+    const entry = { name: name || 'Guest', email: email || '', guests: guestCount };
+    event.rsvps.push(entry);
+    event.rsvpList.push(entry);
     res.json({ success: true, data: event, message: 'RSVP confirmed!' });
+  });
+
+  app.delete('/api/events/:id/rsvp/:rsvpIndex', (req, res) => {
+    const event = events.find(e => e.id === req.params.id);
+    if (!event) {
+      return res.status(404).json({ success: false, error: 'Event not found' });
+    }
+    const rsvpIdx = parseInt(req.params.rsvpIndex, 10);
+    const list = event.rsvpList && event.rsvpList.length > 0 ? event.rsvpList : event.rsvps;
+    if (isNaN(rsvpIdx) || rsvpIdx < 0 || !list || rsvpIdx >= list.length) {
+      return res.status(400).json({ success: false, error: 'Invalid RSVP index' });
+    }
+    const removedItem = list[rsvpIdx];
+    event.spotsLeft += (removedItem.guests || 1);
+    if (event.rsvpList && event.rsvpList.length > rsvpIdx) {
+      event.rsvpList.splice(rsvpIdx, 1);
+    }
+    if (event.rsvps && event.rsvps.length > rsvpIdx) {
+      event.rsvps.splice(rsvpIdx, 1);
+    }
+    res.json({ success: true, data: event, message: 'RSVP cancelled and spots restored' });
   });
 
   // --- REVIEWS API ---
@@ -310,25 +434,91 @@ async function startServer() {
     res.status(201).json({ success: true, data: newMsg, message: 'Message sent successfully' });
   });
 
-  // --- ADMIN STATS ---
+  // --- USER & LOYALTY API ---
+  app.get('/api/user', (req, res) => {
+    res.json({ success: true, data: currentUser });
+  });
+
+  app.put('/api/user', (req, res) => {
+    currentUser = {
+      ...currentUser,
+      ...req.body
+    };
+    res.json({ success: true, data: currentUser });
+  });
+
+  app.post('/api/user/redeem', (req, res) => {
+    const { rewardTitle, pointCost } = req.body;
+    const cost = Number(pointCost);
+    if (!rewardTitle || isNaN(cost) || cost <= 0) {
+      return res.status(400).json({ success: false, error: 'Valid reward title and point cost required' });
+    }
+    if (currentUser.loyaltyPoints < cost) {
+      return res.status(400).json({ success: false, error: 'Insufficient loyalty points balance' });
+    }
+
+    currentUser.loyaltyPoints -= cost;
+    const voucherCode = `UGC-GIFT-${Math.floor(1000 + Math.random() * 9000)}`;
+    const historyEntry = {
+      id: `tx-${Date.now()}`,
+      date: 'Just now',
+      description: `Redeemed: ${rewardTitle} (Voucher ${voucherCode})`,
+      points: -cost,
+      type: 'redemption' as const,
+      balanceAfter: currentUser.loyaltyPoints
+    };
+    currentUser.pointsHistory = [historyEntry, ...(currentUser.pointsHistory || [])];
+
+    res.json({
+      success: true,
+      data: currentUser,
+      voucherCode,
+      message: `Successfully redeemed ${rewardTitle}`
+    });
+  });
+
+  // --- ADMIN AUTH & STATS ---
+  app.post('/api/admin/verify', (req, res) => {
+    const { passcode } = req.body || {};
+    const validCodes = ['8420', '1234', 'grove2026', 'admin'];
+    const cleanPass = String(passcode || '').trim();
+    if (validCodes.includes(cleanPass)) {
+      return res.json({ success: true, message: 'Passcode authenticated successfully' });
+    }
+    return res.status(401).json({ success: false, error: 'Invalid management passcode' });
+  });
+
   app.get('/api/admin/stats', (req, res) => {
     const totalRev = orders.reduce((sum, o) => o.status !== 'cancelled' ? sum + o.total : sum, 0);
     res.json({
       success: true,
       data: {
-        totalOrders: orders.length + 120, // Real-time + historical benchmark
-        totalRevenue: Math.round(totalRev + 2420),
-        totalReservations: reservations.length + 29,
-        totalCustomers: 486,
+        todayRevenue: 1280 + Math.round(totalRev),
+        totalOrders: orders.length + 64,
+        reservationsToday: reservations.length || 12,
+        activeCustomers: 38,
+        totalRevenue: Math.round(totalRev + 24500),
+        totalReservations: reservations.length + 180,
+        totalCustomers: 450,
         recentOrders: orders.slice(0, 5),
+        popularItems: [
+          { name: 'Artisan Cafe Latte', sales: 48, revenue: 216.0 },
+          { name: 'Smashed Avocado Toast', sales: 32, revenue: 272.0 },
+          { name: 'Golden Butter Croissant', sales: 41, revenue: 143.5 }
+        ],
+        recentActivity: [
+          { timestamp: '12 mins ago', text: 'New order #1024 for pickup received', type: 'order' },
+          { timestamp: '34 mins ago', text: 'Table reserved for 4 guests on Garden Terrace', type: 'reservation' },
+          { timestamp: '1 hour ago', text: '5-star review left by Sarah Johnson', type: 'review' }
+        ],
         weeklySales: [
-          { day: 'Mon', revenue: 320, orders: 18 },
-          { day: 'Tue', revenue: 410, orders: 24 },
-          { day: 'Wed', revenue: 390, orders: 22 },
-          { day: 'Thu', revenue: 480, orders: 29 },
-          { day: 'Fri', revenue: 640, orders: 42 },
-          { day: 'Sat', revenue: 890, orders: 58 },
-          { day: 'Sun', revenue: 760, orders: 48 },
+          { day: 'Mon', revenue: 1100, orders: 54 },
+          { day: 'Tue', revenue: 1250, orders: 62 },
+          { day: 'Wed', revenue: 1180, orders: 58 },
+          { day: 'Thu', revenue: 1340, orders: 69 },
+          { day: 'Fri', revenue: 1680, orders: 84 },
+          { day: 'Sat', revenue: 2100, orders: 112 },
+          { day: 'Sun', revenue: 1950, orders: 98 },
         ]
       }
     });

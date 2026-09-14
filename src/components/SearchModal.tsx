@@ -46,7 +46,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           <input
             type="text"
             autoFocus
-            value={query}
+            value={query || ''}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search coffee, pastries, avocado toast, pasta..."
             className="w-full bg-transparent text-sm sm:text-base text-[#2A1E17] placeholder-[#2A1E17]/40 focus:outline-none"

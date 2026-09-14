@@ -133,7 +133,7 @@ export const CustomerReviews: React.FC<CustomerReviewsProps> = ({ reviews, onAdd
                   <input
                     type="text"
                     required
-                    value={name}
+                    value={name || ''}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Sarah Johnson"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-sm focus:outline-none focus:border-[#C48B47]"
@@ -167,7 +167,7 @@ export const CustomerReviews: React.FC<CustomerReviewsProps> = ({ reviews, onAdd
                   <label className="block text-xs font-semibold text-[#2A1E17] mb-1">Favorite Item (Optional)</label>
                   <input
                     type="text"
-                    value={favoriteItem}
+                    value={favoriteItem || ''}
                     onChange={(e) => setFavoriteItem(e.target.value)}
                     placeholder="e.g. Artisan Cafe Latte"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-sm focus:outline-none focus:border-[#C48B47]"
@@ -179,7 +179,7 @@ export const CustomerReviews: React.FC<CustomerReviewsProps> = ({ reviews, onAdd
                   <textarea
                     required
                     rows={3}
-                    value={comment}
+                    value={comment || ''}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Tell us about the coffee, atmosphere, or service..."
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-sm focus:outline-none focus:border-[#C48B47]"

@@ -108,7 +108,7 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
               <Search className="w-4 h-4 text-[#2A1E17]/40 absolute left-3.5 top-3" />
               <input
                 type="text"
-                value={searchInput}
+                value={searchInput || ''}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Enter Order # (e.g. 1024, 1023, 1022)"
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#2A1E17]/15 text-sm text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"

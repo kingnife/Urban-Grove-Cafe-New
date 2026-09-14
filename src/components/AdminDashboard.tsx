@@ -17,7 +17,11 @@ import {
   Check, 
   ChevronRight,
   Sparkles,
-  Ticket
+  Ticket,
+  MapPin,
+  UserPlus,
+  Calendar,
+  Search
 } from 'lucide-react';
 import { AdminStats, Order, MenuItem, Reservation, CafeEvent, OrderStatus, MenuCategory } from '../types';
 
@@ -32,6 +36,10 @@ interface AdminDashboardProps {
   onSaveMenuItem: (item: Partial<MenuItem>) => Promise<void>;
   onDeleteMenuItem: (itemId: string) => Promise<void>;
   onUpdateReservationStatus: (resId: string, status: 'confirmed' | 'cancelled') => Promise<void>;
+  onSaveEvent: (event: Partial<CafeEvent>) => Promise<void>;
+  onDeleteEvent: (eventId: string) => Promise<void>;
+  onRemoveRSVP: (eventId: string, rsvpIndex: number) => Promise<void>;
+  onAddRSVP?: (eventId: string, data: { name: string; email: string; guests: number }) => Promise<void>;
   onExitAdmin: () => void;
 }
 
@@ -46,6 +54,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSaveMenuItem,
   onDeleteMenuItem,
   onUpdateReservationStatus,
+  onSaveEvent,
+  onDeleteEvent,
+  onRemoveRSVP,
+  onAddRSVP,
   onExitAdmin
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'menu' | 'reservations' | 'events'>('overview');
@@ -53,6 +65,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Menu Item Modal
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Partial<MenuItem> | null>(null);
+
+  // Event Add/Edit Modal
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Partial<CafeEvent> | null>(null);
+
+  // RSVP Management Modal
+  const [selectedRsvpEventId, setSelectedRsvpEventId] = useState<string | null>(null);
+  const [newRsvpName, setNewRsvpName] = useState('');
+  const [newRsvpEmail, setNewRsvpEmail] = useState('');
+  const [newRsvpGuests, setNewRsvpGuests] = useState(1);
+  const [isAddingRsvp, setIsAddingRsvp] = useState(false);
+
+  // Event Filters
+  const [eventCategoryFilter, setEventCategoryFilter] = useState('all');
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
 
   const handleOpenNewItem = () => {
     setEditingItem({
@@ -79,6 +106,82 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setShowItemModal(false);
     setEditingItem(null);
   };
+
+  // Event Operations
+  const handleOpenNewEvent = () => {
+    setEditingEvent({
+      title: '',
+      category: 'Music & Evening',
+      date: 'Saturday, Oct 10',
+      time: '7:00 PM – 9:30 PM',
+      description: '',
+      location: 'Main Hearth Lounge',
+      ticketPrice: 0,
+      spotsLeft: 25,
+      image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
+      rsvps: [],
+      rsvpList: []
+    });
+    setShowEventModal(true);
+  };
+
+  const handleEditEvent = (evt: CafeEvent) => {
+    setEditingEvent({ ...evt });
+    setShowEventModal(true);
+  };
+
+  const handleSaveEventSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent || !editingEvent.title) return;
+    await onSaveEvent(editingEvent);
+    setShowEventModal(false);
+    setEditingEvent(null);
+  };
+
+  const handleDeleteEventClick = async (eventId: string, title: string) => {
+    if (window.confirm(`Are you sure you want to remove the event "${title}"? This will permanently delete the event and all guest registrations.`)) {
+      await onDeleteEvent(eventId);
+      if (selectedRsvpEventId === eventId) {
+        setSelectedRsvpEventId(null);
+      }
+    }
+  };
+
+  const handleRemoveRsvpClick = async (eventId: string, rsvpIndex: number, guestName: string) => {
+    if (window.confirm(`Cancel RSVP for ${guestName}? This will restore their spot(s) on the guestlist.`)) {
+      await onRemoveRSVP(eventId, rsvpIndex);
+    }
+  };
+
+  const handleAddManualRsvp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRsvpEventId || !newRsvpName.trim() || !onAddRSVP) return;
+    setIsAddingRsvp(true);
+    try {
+      await onAddRSVP(selectedRsvpEventId, {
+        name: newRsvpName.trim(),
+        email: newRsvpEmail.trim() || 'walkin@urbangrove.com',
+        guests: Number(newRsvpGuests) || 1
+      });
+      setNewRsvpName('');
+      setNewRsvpEmail('');
+      setNewRsvpGuests(1);
+    } finally {
+      setIsAddingRsvp(false);
+    }
+  };
+
+  const activeRsvpEvent = events.find((e) => e.id === selectedRsvpEventId);
+
+  // Filtered events
+  const filteredEvents = events.filter((evt) => {
+    const matchesCategory = eventCategoryFilter === 'all' || evt.category === eventCategoryFilter;
+    const matchesQuery = !eventSearchQuery.trim() || 
+      evt.title.toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
+      evt.location.toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
+      evt.date.toLowerCase().includes(eventSearchQuery.toLowerCase());
+    return matchesCategory && matchesQuery;
+  });
 
   return (
     <div className="py-10 bg-[#F6F2EC] min-h-screen" id="admin-dashboard">
@@ -187,7 +290,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
                 <p className="font-serif text-3xl font-bold text-[#2A1E17]">
-                  ${stats.todayRevenue.toLocaleString()}
+                  ${(stats?.todayRevenue ?? 0).toLocaleString()}
                 </p>
                 <p className="text-[11px] text-[#1E3A2F] font-semibold flex items-center gap-1">
                   <span>+14.2% vs yesterday</span>
@@ -204,7 +307,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
                 <p className="font-serif text-3xl font-bold text-[#2A1E17]">
-                  {stats.totalOrders}
+                  {stats?.totalOrders ?? orders.length}
                 </p>
                 <p className="text-[11px] text-[#2A1E17]/60">
                   {orders.filter(o => o.status === 'received' || o.status === 'preparing').length} in kitchen queue
@@ -221,7 +324,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
                 <p className="font-serif text-3xl font-bold text-[#2A1E17]">
-                  {stats.reservationsToday}
+                  {stats?.reservationsToday ?? reservations.length}
                 </p>
                 <p className="text-[11px] text-[#2A1E17]/60">
                   {reservations.reduce((acc, r) => acc + r.guests, 0)} total booked guests
@@ -238,7 +341,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
                 <p className="font-serif text-3xl font-bold text-[#2A1E17]">
-                  {stats.activeCustomers}
+                  {stats?.activeCustomers ?? 38}
                 </p>
                 <p className="text-[11px] text-[#2A1E17]/60">
                   In loyalty club & registered accounts
@@ -286,7 +389,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         ${ord.total.toFixed(2)}
                       </span>
                       <select
-                        value={ord.status}
+                        value={ord.status || 'received'}
                         onChange={(e: any) => onUpdateOrderStatus(ord.id, e.target.value)}
                         className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-[#2A1E17]/15 bg-white text-[#2A1E17]"
                       >
@@ -355,7 +458,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </td>
                       <td className="p-4">
                         <select
-                          value={ord.status}
+                          value={ord.status || 'received'}
                           onChange={(e: any) => onUpdateOrderStatus(ord.id, e.target.value)}
                           className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
                             ord.status === 'completed'
@@ -433,12 +536,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={it.inStock}
+                        checked={Boolean(it.inStock ?? it.isAvailable ?? true)}
                         onChange={(e) => onUpdateMenuItemStock(it.id, e.target.checked)}
                         className="rounded text-[#1E3A2F] focus:ring-[#1E3A2F]"
                       />
-                      <span className={`text-xs font-bold ${it.inStock ? 'text-[#1E3A2F]' : 'text-red-600'}`}>
-                        {it.inStock ? 'In Stock' : 'Out of Stock'}
+                      <span className={`text-xs font-bold ${Boolean(it.inStock ?? it.isAvailable ?? true) ? 'text-[#1E3A2F]' : 'text-red-600'}`}>
+                        {Boolean(it.inStock ?? it.isAvailable ?? true) ? 'In Stock' : 'Out of Stock'}
                       </span>
                     </label>
 
@@ -553,59 +656,234 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* TAB 5: EVENT MANAGEMENT (Prompt Requirement: Create events, View RSVPs) */}
+        {/* TAB 5: EVENT MANAGEMENT (Prompt Requirement: Create events, View & Edit RSVPs) */}
         {activeTab === 'events' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            {/* Header & Controls */}
+            <div className="bg-white p-6 rounded-3xl border border-[#2A1E17]/8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
+                <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#C48B47] mb-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Programming & Hospitality</span>
+                </div>
                 <h3 className="font-serif text-2xl font-bold text-[#2A1E17]">Café Events & RSVP Rosters</h3>
-                <p className="text-xs text-[#2A1E17]/60">Manage upcoming jazz nights, coffee workshops, and weekend brunches.</p>
+                <p className="text-xs text-[#2A1E17]/60 mt-0.5">
+                  Schedule live sessions, workshops, tasting events, and manage guest registrations.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={handleOpenNewEvent}
+                  id="admin-add-event-btn"
+                  className="px-4 py-2.5 bg-[#2A1E17] hover:bg-[#1E1510] text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4 text-[#D4A373]" />
+                  <span>Create New Event</span>
+                </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {events.map((evt) => (
-                <div
-                  key={evt.id}
-                  className="bg-white p-6 rounded-3xl border border-[#2A1E17]/8 shadow-sm space-y-4"
-                >
-                  <img
-                    src={evt.image}
-                    alt={evt.title}
-                    className="w-full h-40 object-cover rounded-2xl"
-                  />
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-[#C48B47] tracking-wider">
-                      {evt.category}
-                    </span>
-                    <h4 className="font-serif text-xl font-bold text-[#2A1E17] mt-1">
-                      {evt.title}
-                    </h4>
-                    <p className="text-xs text-[#2A1E17]/70 mt-1">
-                      {evt.date} • {evt.time}
-                    </p>
-                  </div>
+            {/* Filter and Search Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
+                {['all', 'Music & Evening', 'Culinary Special', 'Coffee Education', 'Community Gathering'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setEventCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-xl font-medium whitespace-nowrap transition-colors ${
+                      eventCategoryFilter === cat
+                        ? 'bg-[#2A1E17] text-white'
+                        : 'bg-white border border-[#2A1E17]/10 text-[#2A1E17]/70 hover:bg-[#F6F2EC]'
+                    }`}
+                  >
+                    {cat === 'all' ? 'All Categories' : cat}
+                  </button>
+                ))}
+              </div>
 
-                  <div className="p-3 bg-[#F6F2EC] rounded-xl flex items-center justify-between text-xs">
-                    <span className="font-medium text-[#2A1E17]">Registered RSVPs</span>
-                    <span className="font-serif font-bold text-sm text-[#1E3A2F]">
-                      {evt.rsvpList.length} guests ({evt.spotsLeft} spots open)
-                    </span>
-                  </div>
-
-                  {evt.rsvpList.length > 0 && (
-                    <div className="space-y-1 text-xs">
-                      <p className="text-[11px] font-bold text-[#2A1E17]/70 uppercase">Recent Attendees:</p>
-                      <ul className="text-[11px] text-[#2A1E17]/80 space-y-0.5">
-                        {evt.rsvpList.slice(0, 3).map((r, i) => (
-                          <li key={i}>• {r.name} ({r.guests} guests)</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ))}
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-[#2A1E17]/40 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={eventSearchQuery}
+                  onChange={(e) => setEventSearchQuery(e.target.value)}
+                  placeholder="Search events by title or place..."
+                  className="w-full pl-8 pr-3 py-2 bg-white border border-[#2A1E17]/15 rounded-xl text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                />
+              </div>
             </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-[#2A1E17]/8">
+                <span className="text-[11px] font-medium text-[#2A1E17]/60 block">Total Scheduled Events</span>
+                <span className="font-serif text-2xl font-bold text-[#2A1E17]">{events.length}</span>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-[#2A1E17]/8">
+                <span className="text-[11px] font-medium text-[#2A1E17]/60 block">Total RSVP Attendees</span>
+                <span className="font-serif text-2xl font-bold text-[#1E3A2F]">
+                  {events.reduce((sum, e) => {
+                    const list = e.rsvpList && e.rsvpList.length > 0 ? e.rsvpList : (e.rsvps || []);
+                    return sum + list.reduce((s, r) => s + (r.guests || 1), 0);
+                  }, 0)} Guests
+                </span>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-[#2A1E17]/8 col-span-2 sm:col-span-1">
+                <span className="text-[11px] font-medium text-[#2A1E17]/60 block">Available Open Seats</span>
+                <span className="font-serif text-2xl font-bold text-[#C48B47]">
+                  {events.reduce((sum, e) => sum + (e.spotsLeft || 0), 0)} Seats
+                </span>
+              </div>
+            </div>
+
+            {/* Events Grid */}
+            {filteredEvents.length === 0 ? (
+              <div className="bg-white p-12 text-center rounded-3xl border border-[#2A1E17]/8 space-y-3">
+                <Calendar className="w-10 h-10 text-[#2A1E17]/30 mx-auto" />
+                <h4 className="font-serif text-lg font-bold text-[#2A1E17]">No events found</h4>
+                <p className="text-xs text-[#2A1E17]/60 max-w-sm mx-auto">
+                  {eventSearchQuery || eventCategoryFilter !== 'all'
+                    ? 'No events matched your search query or category filter.'
+                    : 'Get started by creating your first café event, tasting, or workshop.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleOpenNewEvent}
+                  className="px-4 py-2 bg-[#2A1E17] text-white text-xs font-semibold rounded-xl inline-flex items-center gap-1.5 hover:bg-[#1E1510]"
+                >
+                  <Plus className="w-4 h-4 text-[#D4A373]" />
+                  <span>Create An Event</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredEvents.map((evt) => {
+                  const attendeeList = evt.rsvpList && evt.rsvpList.length > 0 ? evt.rsvpList : (evt.rsvps || []);
+                  const totalBookedGuests = attendeeList.reduce((acc, r) => acc + (r.guests || 1), 0);
+
+                  return (
+                    <div
+                      key={evt.id}
+                      className="bg-white rounded-3xl border border-[#2A1E17]/8 shadow-sm flex flex-col justify-between overflow-hidden group hover:shadow-md transition-shadow"
+                      id={`admin-event-card-${evt.id}`}
+                    >
+                      <div>
+                        {/* Event Image */}
+                        <div className="relative h-44 overflow-hidden bg-[#2A1E17]/5">
+                          <img
+                            src={evt.image}
+                            alt={evt.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute top-3 left-3 bg-[#2A1E17]/85 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                            {evt.category}
+                          </div>
+                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm text-[#2A1E17] text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+                            {evt.ticketPrice === 0 ? 'Free Entry' : `$${evt.ticketPrice} / guest`}
+                          </div>
+                        </div>
+
+                        {/* Event Content */}
+                        <div className="p-5 space-y-3">
+                          <div className="flex items-center gap-3 text-xs text-[#2A1E17]/70">
+                            <span className="font-semibold text-[#C48B47] flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {evt.date}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5 text-[#2A1E17]/40" />
+                              {evt.time}
+                            </span>
+                          </div>
+
+                          <h4 className="font-serif text-lg font-bold text-[#2A1E17] leading-snug">
+                            {evt.title}
+                          </h4>
+
+                          <p className="text-xs text-[#2A1E17]/75 line-clamp-2 leading-relaxed font-light">
+                            {evt.description}
+                          </p>
+
+                          <div className="flex items-center gap-1.5 text-xs text-[#2A1E17]/60 pt-2 border-t border-[#2A1E17]/5">
+                            <MapPin className="w-3.5 h-3.5 text-[#C48B47] shrink-0" />
+                            <span className="truncate">{evt.location}</span>
+                          </div>
+
+                          {/* RSVP Roster Summary */}
+                          <div className="p-3 bg-[#F6F2EC] rounded-2xl space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-semibold text-[#2A1E17] flex items-center gap-1">
+                                <Users className="w-3.5 h-3.5 text-[#1E3A2F]" />
+                                <span>RSVP Roster</span>
+                              </span>
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white text-[#1E3A2F] border border-[#2A1E17]/10">
+                                {totalBookedGuests} booked • {evt.spotsLeft} left
+                              </span>
+                            </div>
+
+                            {attendeeList.length > 0 ? (
+                              <div className="space-y-1">
+                                <ul className="text-[11px] text-[#2A1E17]/80 space-y-1">
+                                  {attendeeList.slice(0, 2).map((r, i) => (
+                                    <li key={i} className="flex items-center justify-between bg-white/70 px-2 py-1 rounded-lg">
+                                      <span className="font-medium truncate max-w-[130px]">{r.name}</span>
+                                      <span className="text-[10px] text-[#2A1E17]/60 font-semibold">{r.guests} guest{r.guests > 1 ? 's' : ''}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                                {attendeeList.length > 2 && (
+                                  <p className="text-[10px] text-[#2A1E17]/60 italic pl-1">
+                                    + {attendeeList.length - 2} more guest registration{attendeeList.length - 2 > 1 ? 's' : ''}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-[#2A1E17]/50 italic">No registrations recorded yet.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Action Controls */}
+                      <div className="p-5 pt-0 flex items-center gap-2 border-t border-[#2A1E17]/5 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRsvpEventId(evt.id)}
+                          id={`manage-rsvps-btn-${evt.id}`}
+                          className="flex-1 py-2 px-3 bg-[#1E3A2F] hover:bg-[#152921] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Users className="w-3.5 h-3.5 text-[#86efac]" />
+                          <span>Manage RSVPs ({attendeeList.length})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleEditEvent(evt)}
+                          id={`edit-event-btn-${evt.id}`}
+                          className="p-2 border border-[#2A1E17]/15 hover:bg-[#F6F2EC] text-[#2A1E17] rounded-xl transition-colors"
+                          title="Edit Event Details"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteEventClick(evt.id, evt.title)}
+                          id={`delete-event-btn-${evt.id}`}
+                          className="p-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl transition-colors"
+                          title="Delete Event"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -664,8 +942,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     type="number"
                     step="0.10"
                     required
-                    value={editingItem.price || ''}
-                    onChange={(e) => setEditingItem({ ...editingItem, price: parseFloat(e.target.value) })}
+                    value={editingItem.price !== undefined && !isNaN(editingItem.price) ? editingItem.price : ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value === '' ? ('' as any) : parseFloat(e.target.value) })}
                     className="w-full px-3 py-2 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17]"
                   />
                 </div>
@@ -698,7 +976,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={editingItem.inStock ?? true}
+                    checked={Boolean(editingItem.inStock ?? editingItem.isAvailable ?? true)}
                     onChange={(e) => setEditingItem({ ...editingItem, inStock: e.target.checked })}
                     className="rounded text-[#1E3A2F]"
                   />
@@ -708,7 +986,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={editingItem.isPopular ?? false}
+                    checked={Boolean(editingItem.isPopular ?? false)}
                     onChange={(e) => setEditingItem({ ...editingItem, isPopular: e.target.checked })}
                     className="rounded text-[#C48B47]"
                   />
@@ -732,6 +1010,365 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EVENT ADD / EDIT MODAL */}
+      {showEventModal && editingEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 border border-[#2A1E17]/10 shadow-2xl relative my-8">
+            <button
+              onClick={() => {
+                setShowEventModal(false);
+                setEditingEvent(null);
+              }}
+              className="absolute top-4 right-4 p-2 text-[#2A1E17]/60 hover:text-[#2A1E17] rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#C48B47] mb-1">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{editingEvent.id ? 'Modify Existing Event' : 'New Cafe Gathering'}</span>
+            </div>
+            <h3 className="font-serif text-2xl font-bold text-[#2A1E17] mb-1">
+              {editingEvent.id ? 'Edit Event Details' : 'Create New Café Event'}
+            </h3>
+            <p className="text-xs text-[#2A1E17]/60 mb-6 font-light">
+              Configure event dates, seating capacity, pricing, and promotional photos.
+            </p>
+
+            <form onSubmit={handleSaveEventSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-[#2A1E17] mb-1">Event Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingEvent.title || ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                  placeholder="e.g. Friday Night Jazz & Strings"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-[#2A1E17] mb-1">Category</label>
+                  <select
+                    value={editingEvent.category || 'Music & Evening'}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, category: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] bg-white focus:outline-none focus:border-[#C48B47]"
+                  >
+                    <option value="Music & Evening">Music & Evening</option>
+                    <option value="Culinary Special">Culinary Special</option>
+                    <option value="Coffee Education">Coffee Education</option>
+                    <option value="Community Gathering">Community Gathering</option>
+                    <option value="Art & Poetry">Art & Poetry</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#2A1E17] mb-1">Location Area</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingEvent.location || ''}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value })}
+                    placeholder="e.g. Main Hearth Lounge, Garden Patio"
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-[#2A1E17] mb-1">Date String *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingEvent.date || ''}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, date: e.target.value })}
+                    placeholder="e.g. Friday, Oct 24"
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#2A1E17] mb-1">Time Range *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingEvent.time || ''}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, time: e.target.value })}
+                    placeholder="e.g. 7:00 PM – 9:30 PM"
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-[#2A1E17] mb-1">Admission Price ($)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={editingEvent.ticketPrice !== undefined && !isNaN(editingEvent.ticketPrice) ? editingEvent.ticketPrice : 0}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, ticketPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                    placeholder="0 for Free Entry"
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                  />
+                  <span className="text-[10px] text-[#2A1E17]/50 block mt-0.5">Enter 0 for free admission</span>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#2A1E17] mb-1">Available Spots / Capacity</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    required
+                    value={editingEvent.spotsLeft !== undefined && !isNaN(editingEvent.spotsLeft) ? editingEvent.spotsLeft : 20}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, spotsLeft: parseInt(e.target.value, 10) || 0 })}
+                    placeholder="e.g. 25"
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#2A1E17] mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={editingEvent.description || ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+                  placeholder="Describe the mood, guest performers, special menu items, or booking requirements..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-[#2A1E17]">Cover Photo Image URL</label>
+                  <span className="text-[10px] text-[#2A1E17]/50">Or choose a preset below</span>
+                </div>
+                <input
+                  type="url"
+                  required
+                  value={editingEvent.image || ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, image: e.target.value })}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#2A1E17]/15 text-xs text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                />
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[
+                    { label: 'Live Jazz & Strings', url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80' },
+                    { label: 'Artisan Brunch', url: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=800&q=80' },
+                    { label: 'Coffee Cupping', url: 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=800&q=80' },
+                    { label: 'Pastry & Latte Art', url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80' }
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setEditingEvent({ ...editingEvent, image: preset.url })}
+                      className="text-[10px] px-2.5 py-1 rounded-lg bg-[#F6F2EC] hover:bg-[#ede7de] text-[#2A1E17]/80 transition-colors"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#2A1E17]/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEventModal(false);
+                    setEditingEvent(null);
+                  }}
+                  className="px-4 py-2.5 text-xs font-semibold text-[#2A1E17]/60 hover:text-[#2A1E17]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-[#2A1E17] hover:bg-[#1E1510] text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
+                >
+                  {editingEvent.id ? 'Save Event Changes' : 'Publish Event'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* RSVP MANAGEMENT / ROSTER MODAL */}
+      {selectedRsvpEventId && activeRsvpEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 border border-[#2A1E17]/10 shadow-2xl relative my-8">
+            <button
+              onClick={() => setSelectedRsvpEventId(null)}
+              className="absolute top-4 right-4 p-2 text-[#2A1E17]/60 hover:text-[#2A1E17] rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Event Header Banner */}
+            <div className="mb-6">
+              <span className="text-[10px] uppercase font-bold text-[#C48B47] tracking-wider block mb-1">
+                {activeRsvpEvent.category} • Guestlist & Attendance
+              </span>
+              <h3 className="font-serif text-2xl font-bold text-[#2A1E17]">
+                {activeRsvpEvent.title}
+              </h3>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-[#2A1E17]/70 mt-2">
+                <span className="flex items-center gap-1 font-medium">
+                  <Calendar className="w-3.5 h-3.5 text-[#C48B47]" />
+                  {activeRsvpEvent.date}
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-[#2A1E17]/50" />
+                  {activeRsvpEvent.time}
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-[#C48B47]" />
+                  {activeRsvpEvent.location}
+                </span>
+              </div>
+            </div>
+
+            {/* Capacity Status Bar */}
+            <div className="p-4 bg-[#F6F2EC] rounded-2xl flex items-center justify-between mb-6">
+              <div>
+                <span className="text-xs text-[#2A1E17]/60 block font-medium">Total Registered</span>
+                <span className="font-serif text-xl font-bold text-[#1E3A2F]">
+                  {(activeRsvpEvent.rsvpList && activeRsvpEvent.rsvpList.length > 0 ? activeRsvpEvent.rsvpList : (activeRsvpEvent.rsvps || [])).reduce((sum, r) => sum + (r.guests || 1), 0)} Guests
+                </span>
+              </div>
+
+              <div className="text-right">
+                <span className="text-xs text-[#2A1E17]/60 block font-medium">Remaining Capacity</span>
+                <span className={`font-serif text-xl font-bold ${activeRsvpEvent.spotsLeft <= 5 ? 'text-[#801414]' : 'text-[#C48B47]'}`}>
+                  {activeRsvpEvent.spotsLeft} Spots Open
+                </span>
+              </div>
+            </div>
+
+            {/* Attendee Roster List */}
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#2A1E17]">
+                  Confirmed RSVPs ({(activeRsvpEvent.rsvpList && activeRsvpEvent.rsvpList.length > 0 ? activeRsvpEvent.rsvpList : (activeRsvpEvent.rsvps || [])).length})
+                </h4>
+                <span className="text-[11px] text-[#2A1E17]/50">Click trash icon to cancel RSVP</span>
+              </div>
+
+              {(() => {
+                const list = activeRsvpEvent.rsvpList && activeRsvpEvent.rsvpList.length > 0 ? activeRsvpEvent.rsvpList : (activeRsvpEvent.rsvps || []);
+                if (list.length === 0) {
+                  return (
+                    <div className="p-6 text-center bg-[#FDFBF7] rounded-2xl border border-dashed border-[#2A1E17]/15">
+                      <p className="text-xs text-[#2A1E17]/60 italic">No registrations for this event yet.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                    {list.map((rsvp, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3 bg-white rounded-xl border border-[#2A1E17]/10 flex items-center justify-between gap-3 hover:border-[#2A1E17]/20 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#1E3A2F]/10 text-[#1E3A2F] flex items-center justify-center font-bold text-xs">
+                            {rsvp.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-[#2A1E17]">{rsvp.name}</p>
+                            <p className="text-[11px] text-[#2A1E17]/60">{rsvp.email || 'No email specified'}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#F6F2EC] text-[#2A1E17]">
+                            {rsvp.guests} guest{rsvp.guests > 1 ? 's' : ''}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRsvpClick(activeRsvpEvent.id, idx, rsvp.name)}
+                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Cancel RSVP and restore spots"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Quick Add Manual RSVP (Phone/Walk-in) */}
+            {onAddRSVP && (
+              <div className="p-4 bg-[#FDFBF7] rounded-2xl border border-[#2A1E17]/10">
+                <h5 className="text-xs font-bold text-[#2A1E17] mb-2 flex items-center gap-1.5">
+                  <UserPlus className="w-3.5 h-3.5 text-[#C48B47]" />
+                  <span>Manual Guest Entry (Walk-in or Phone Registration)</span>
+                </h5>
+                <form onSubmit={handleAddManualRsvp} className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={newRsvpName}
+                    onChange={(e) => setNewRsvpName(e.target.value)}
+                    placeholder="Guest Full Name *"
+                    className="px-3 py-2 text-xs rounded-xl border border-[#2A1E17]/15 bg-white text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                  />
+                  <input
+                    type="email"
+                    value={newRsvpEmail}
+                    onChange={(e) => setNewRsvpEmail(e.target.value)}
+                    placeholder="Email (Optional)"
+                    className="px-3 py-2 text-xs rounded-xl border border-[#2A1E17]/15 bg-white text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    max={Math.max(1, activeRsvpEvent.spotsLeft)}
+                    value={newRsvpGuests}
+                    onChange={(e) => setNewRsvpGuests(parseInt(e.target.value, 10) || 1)}
+                    placeholder="Party size"
+                    className="px-3 py-2 text-xs rounded-xl border border-[#2A1E17]/15 bg-white text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isAddingRsvp || activeRsvpEvent.spotsLeft <= 0}
+                    className="px-3 py-2 bg-[#2A1E17] hover:bg-[#1E1510] disabled:bg-gray-400 text-white text-xs font-semibold rounded-xl transition-all"
+                  >
+                    {isAddingRsvp ? 'Adding...' : '+ Add RSVP'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4 mt-4 border-t border-[#2A1E17]/10">
+              <button
+                type="button"
+                onClick={() => setSelectedRsvpEventId(null)}
+                className="px-5 py-2 bg-[#2A1E17] text-white text-xs font-semibold rounded-xl hover:bg-[#1E1510]"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

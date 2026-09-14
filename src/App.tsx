@@ -9,7 +9,8 @@ import {
   AdminStats, 
   CustomerUser, 
   CustomizationOption,
-  OrderStatus 
+  OrderStatus,
+  LoyaltyTransaction 
 } from './types';
 import { 
   MENU_ITEMS, 
@@ -118,7 +119,11 @@ export default function App() {
       setReservations(resData);
       setEvents(eventsData);
       setReviews(revData);
-      setAdminStats(statsData);
+      setAdminStats((prev) => ({
+        ...INITIAL_ADMIN_STATS,
+        ...prev,
+        ...(statsData || {})
+      }));
       setUser(userData);
     } catch (err) {
       console.warn('Using local mock data', err);
@@ -204,14 +209,26 @@ export default function App() {
       // Update admin stats
       setAdminStats((prev) => ({
         ...prev,
-        todayRevenue: prev.todayRevenue + created.total,
-        totalOrders: prev.totalOrders + 1
+        todayRevenue: (prev?.todayRevenue ?? 0) + created.total,
+        totalOrders: (prev?.totalOrders ?? 0) + 1
       }));
-      // Add loyalty points
+      // Add loyalty points and record history
       const pointsEarned = Math.round(created.total * 10);
+      const firstItemName = created.items[0]?.menuItem?.name || 'Café Order';
+      const historyTx: LoyaltyTransaction = {
+        id: `tx-${Date.now()}`,
+        date: 'Just now',
+        description: `Order #${created.orderNumber} – ${firstItemName}${created.items.length > 1 ? ` & ${created.items.length - 1} more` : ''}`,
+        points: pointsEarned,
+        type: 'order',
+        orderNumber: created.orderNumber,
+        balanceAfter: user.loyaltyPoints + pointsEarned
+      };
       setUser((prev) => ({
         ...prev,
-        loyaltyPoints: prev.loyaltyPoints + pointsEarned
+        loyaltyPoints: prev.loyaltyPoints + pointsEarned,
+        lifetimePoints: (prev.lifetimePoints || 0) + pointsEarned,
+        pointsHistory: [historyTx, ...(prev.pointsHistory || [])]
       }));
       showToast(`Order #${created.orderNumber} confirmed! +${pointsEarned} loyalty points.`);
       return created;
@@ -239,7 +256,7 @@ export default function App() {
       setReservations((prev) => [created, ...prev]);
       setAdminStats((prev) => ({
         ...prev,
-        reservationsToday: prev.reservationsToday + 1
+        reservationsToday: (prev?.reservationsToday ?? 0) + 1
       }));
       showToast(`Table confirmed! Reference: ${created.reservationCode}`);
       return created;
@@ -326,6 +343,45 @@ export default function App() {
       showToast(`Reservation #${updated.reservationCode} marked as ${status}.`);
     } catch (err) {
       showToast('Failed to update reservation.', 'error');
+    }
+  };
+
+  const handleAdminSaveEvent = async (eventData: Partial<CafeEvent>) => {
+    try {
+      const saved = await api.saveEvent(eventData);
+      setEvents((prev) => {
+        const exists = prev.some((e) => e.id === saved.id);
+        if (exists) {
+          return prev.map((e) => (e.id === saved.id ? saved : e));
+        }
+        return [saved, ...prev];
+      });
+      showToast(eventData.id ? `Event "${saved.title}" updated!` : `Event "${saved.title}" added to calendar!`);
+    } catch (err) {
+      showToast('Failed to save event.', 'error');
+      throw err;
+    }
+  };
+
+  const handleAdminDeleteEvent = async (eventId: string) => {
+    try {
+      await api.deleteEvent(eventId);
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+      showToast('Event removed successfully.', 'info');
+    } catch (err) {
+      showToast('Failed to remove event.', 'error');
+      throw err;
+    }
+  };
+
+  const handleAdminRemoveRSVP = async (eventId: string, rsvpIndex: number) => {
+    try {
+      const updated = await api.removeRSVP(eventId, rsvpIndex);
+      setEvents((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+      showToast('RSVP removed and guest spots restored.');
+    } catch (err) {
+      showToast('Failed to remove RSVP.', 'error');
+      throw err;
     }
   };
 
@@ -472,6 +528,10 @@ export default function App() {
             onSaveMenuItem={handleAdminSaveMenuItem}
             onDeleteMenuItem={handleAdminDeleteMenuItem}
             onUpdateReservationStatus={handleAdminReservationStatus}
+            onSaveEvent={handleAdminSaveEvent}
+            onDeleteEvent={handleAdminDeleteEvent}
+            onRemoveRSVP={handleAdminRemoveRSVP}
+            onAddRSVP={handleRSVP}
             onExitAdmin={() => {
               setIsAdminMode(false);
               setActiveView('home');

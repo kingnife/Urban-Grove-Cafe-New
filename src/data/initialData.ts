@@ -1,4 +1,4 @@
-import { MenuItem, CafeEvent, Review, Order, Reservation, CustomerUser } from '../types';
+import { MenuItem, CafeEvent, Review, Order, Reservation, CustomerUser, LoyaltyTier, LoyaltyTransaction } from '../types';
 
 export const INITIAL_MENU_ITEMS: MenuItem[] = [
   {
@@ -502,6 +502,134 @@ export const GALLERY_ITEMS = [
   }
 ];
 
+export const LOYALTY_TIERS: LoyaltyTier[] = [
+  {
+    id: 'bronze',
+    name: 'Bronze Taster',
+    minPoints: 0,
+    maxPoints: 199,
+    badgeColor: '#A07855',
+    multiplierText: '10 pts per $1 spent',
+    perks: [
+      'Earn 10 points on every $1 spent',
+      'Complimentary Birthday handcrafted drink',
+      'Mobile order ahead & fast pickup'
+    ]
+  },
+  {
+    id: 'silver',
+    name: 'Silver Explorer',
+    minPoints: 200,
+    maxPoints: 499,
+    badgeColor: '#8C92AC',
+    multiplierText: '10 pts per $1 spent + Perk Pack',
+    perks: [
+      'Free oat, almond, or organic syrup customizations',
+      '10% discount on whole bean coffee retail bags',
+      'Early access to seasonal autumn & spring drink menus',
+      'Priority table reservation requests'
+    ]
+  },
+  {
+    id: 'gold',
+    name: 'Gold Roastery Connoisseur',
+    minPoints: 500,
+    maxPoints: 999,
+    badgeColor: '#C48B47',
+    multiplierText: '15 pts per $1 spent (1.5x Multiplier)',
+    perks: [
+      'Earn 15 points on every $1 spent (1.5x multiplier)',
+      'Free in-house drip coffee refills on every visit',
+      'Monthly complimentary pastry reward voucher',
+      'Invitations to private coffee cupping & roasting workshops'
+    ]
+  },
+  {
+    id: 'platinum',
+    name: 'Platinum Reserve Ambassador',
+    minPoints: 1000,
+    maxPoints: 9999,
+    badgeColor: '#2A1E17',
+    multiplierText: '20 pts per $1 spent (2.0x Multiplier)',
+    perks: [
+      'Earn 20 points on every $1 spent (2x points boost)',
+      'Quarterly curated 250g bag of rare Reserve single-origin beans',
+      'VIP table booking guarantee on patio & hearth rooms',
+      'Annual dinner & barista masterclass pass'
+    ]
+  }
+];
+
+export const INITIAL_POINTS_HISTORY: LoyaltyTransaction[] = [
+  {
+    id: 'tx-7',
+    date: 'Sep 12, 2026',
+    description: 'Order #UG-1024 – Smashed Avocado Toast & Artisan Latte',
+    points: 260,
+    type: 'order',
+    orderNumber: '1024',
+    balanceAfter: 340
+  },
+  {
+    id: 'tx-6',
+    date: 'Sep 08, 2026',
+    description: 'Event RSVP Confirmed – Friday Night Jazz & Strings',
+    points: 50,
+    type: 'event',
+    balanceAfter: 80
+  },
+  {
+    id: 'tx-5',
+    date: 'Sep 03, 2026',
+    description: 'Redeemed: Complimentary Butter Croissant Voucher',
+    points: -200,
+    type: 'redemption',
+    balanceAfter: 30
+  },
+  {
+    id: 'tx-4',
+    date: 'Aug 28, 2026',
+    description: 'Order #UG-9821 – Cold Brew & Cinnamon Cardamom Cruffin',
+    points: 115,
+    type: 'order',
+    orderNumber: '9821',
+    balanceAfter: 230
+  },
+  {
+    id: 'tx-3',
+    date: 'Aug 20, 2026',
+    description: 'Customer Review Submission – Verified In-Cafe Dining',
+    points: 25,
+    type: 'review',
+    balanceAfter: 115
+  },
+  {
+    id: 'tx-2',
+    date: 'Aug 14, 2026',
+    description: 'Redeemed: Complimentary Specialty Latte Voucher',
+    points: -300,
+    type: 'redemption',
+    balanceAfter: 90
+  },
+  {
+    id: 'tx-1',
+    date: 'Aug 05, 2026',
+    description: 'Order #UG-9310 – Ethiopian Yirgacheffe Beans & Pour-Over',
+    points: 290,
+    type: 'order',
+    orderNumber: '9310',
+    balanceAfter: 390
+  },
+  {
+    id: 'tx-0',
+    date: 'Jul 22, 2026',
+    description: 'Welcome Grove Loyalty Membership Bonus',
+    points: 100,
+    type: 'bonus',
+    balanceAfter: 100
+  }
+];
+
 export const INITIAL_USER: CustomerUser = {
   id: 'user-1',
   name: 'Sarah Johnson',
@@ -510,14 +638,19 @@ export const INITIAL_USER: CustomerUser = {
   avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
   memberSince: 'October 2024',
   loyaltyPoints: 340,
+  lifetimePoints: 840,
   savedAddresses: [
     { label: 'Home', address: '742 Evergreen Terrace, Downtown Apt 4B', isDefault: true },
     { label: 'Studio Office', address: '120 Innovation Square, 3rd Floor', isDefault: false }
   ],
-  favoriteItemIds: ['item-1', 'item-2', 'item-4']
+  favoriteItemIds: ['item-1', 'item-2', 'item-4'],
+  pointsHistory: INITIAL_POINTS_HISTORY
 };
 
-export const MENU_ITEMS = INITIAL_MENU_ITEMS;
+export const MENU_ITEMS: MenuItem[] = INITIAL_MENU_ITEMS.map((item) => ({
+  ...item,
+  inStock: item.inStock ?? item.isAvailable ?? true
+}));
 export const CAFE_EVENTS = INITIAL_EVENTS;
 export const DEFAULT_USER = INITIAL_USER;
 export const INITIAL_ADMIN_STATS = {

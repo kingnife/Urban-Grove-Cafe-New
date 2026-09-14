@@ -101,7 +101,7 @@ export const MenuPage: React.FC<MenuPageProps> = ({
               <Search className="w-4 h-4 text-[#2A1E17]/40 absolute left-3.5 top-3" />
               <input
                 type="text"
-                value={searchQuery}
+                value={searchQuery || ''}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search menu items..."
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#2A1E17]/15 text-xs sm:text-sm text-[#2A1E17] focus:outline-none focus:border-[#C48B47]"
@@ -121,7 +121,7 @@ export const MenuPage: React.FC<MenuPageProps> = ({
               <SlidersHorizontal className="w-4 h-4 text-[#C48B47] shrink-0" />
               <span className="text-xs font-medium text-[#2A1E17]/60 whitespace-nowrap">Sort by:</span>
               <select
-                value={sortBy}
+                value={sortBy || 'popular'}
                 onChange={(e: any) => setSortBy(e.target.value)}
                 className="px-3 py-2 rounded-xl border border-[#2A1E17]/15 text-xs font-medium text-[#2A1E17] bg-white focus:outline-none focus:border-[#C48B47]"
               >
